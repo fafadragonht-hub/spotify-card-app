@@ -1,0 +1,58 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Spotify oEmbed Test</title>
+  </head>
+  <body style="font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding: 24px;">
+    <h2>Spotify oEmbed Endpoint Test</h2>
+
+    <p style="max-width: 760px; line-height: 1.4;">
+      貼入 Spotify track/album/artist link，先測 <code>/api/resolve</code>，再測 <code>/api/oembed</code>。
+      （oEmbed 通常不提供年份）
+    </p>
+
+    <input id="url" style="width: min(760px, 100%); padding: 10px; font-size: 14px;"
+           placeholder="Paste Spotify link (e.g. https://open.spotify.com/track/...)" />
+    <div style="margin-top: 12px;">
+      <button onclick="run()" style="padding: 10px 14px;">Test</button>
+    </div>
+
+    <h3>Result</h3>
+    <pre id="out" style="white-space: pre-wrap; background: #f5f5f5; padding: 12px; border-radius: 8px;"></pre>
+
+    <h3>Thumbnail preview</h3>
+    <img id="thumb" style="max-width: 320px; border-radius: 12px; display:none;" />
+
+    <script>
+      async function run() {
+        const url = document.getElementById("url").value.trim();
+        const out = document.getElementById("out");
+        const img = document.getElementById("thumb");
+        img.style.display = "none";
+        img.src = "";
+
+        if (!url) {
+          out.textContent = "Please paste a Spotify link.";
+          return;
+        }
+
+        out.textContent = "Calling /api/resolve ...\n";
+        const r1 = await fetch(`/api/resolve?url=${encodeURIComponent(url)}`);
+        const j1 = await r1.json();
+        out.textContent += JSON.stringify(j1, null, 2) + "\n\n";
+
+        out.textContent += "Calling /api/oembed ...\n";
+        const r2 = await fetch(`/api/oembed?url=${encodeURIComponent(j1.canonicalUrl || url)}`);
+        const j2 = await r2.json();
+        out.textContent += JSON.stringify(j2, null, 2);
+
+        if (j2.thumbnail_url) {
+          img.src = j2.thumbnail_url;
+          img.style.display = "block";
+        }
+      }
+    </script>
+  </body>
+</html>
