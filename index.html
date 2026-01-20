@@ -1,38 +1,89 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Spotify Card Prototype</title>
+  <title>Spotify Card (Banner Proof of Concept)</title>
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; padding: 24px; background: #0b0b0d; color: #fff; }
-    .wrap { display: grid; grid-template-columns: 1fr 420px; gap: 18px; align-items: start; max-width: 1200px; margin: 0 auto; }
-    .panel { background: #141418; border: 1px solid rgba(255,255,255,.08); border-radius: 14px; padding: 16px; }
-    input { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,.12); background: #0f0f13; color: #fff; }
-    button { padding: 10px 12px; border-radius: 10px; border: 0; background: #27e5a5; color: #04110b; font-weight: 650; cursor: pointer; }
+    :root { color-scheme: dark; }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      margin: 0; padding: 24px;
+      background: #0b0b0d; color: #fff;
+    }
+    .wrap {
+      display: grid;
+      grid-template-columns: 1fr 420px;
+      gap: 18px;
+      align-items: start;
+      max-width: 1300px;
+      margin: 0 auto;
+    }
+    .panel {
+      background: #141418;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 14px;
+      padding: 16px;
+    }
+    input[type="text"], input[type="url"] {
+      width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: #0f0f13;
+      color: #fff;
+      box-sizing: border-box;
+    }
+    button {
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 0;
+      background: #27e5a5;
+      color: #04110b;
+      font-weight: 650;
+      cursor: pointer;
+    }
     button:disabled { opacity: .5; cursor: not-allowed; }
     label { display: flex; align-items: center; gap: 10px; margin: 10px 0; }
     .muted { color: rgba(255,255,255,.62); font-size: 13px; line-height: 1.4; }
-    canvas { width: 100%; height: auto; border-radius: 16px; background: #111; border: 1px solid rgba(255,255,255,.08); }
-    .row { display:flex; gap:10px; margin-top: 10px; }
+    canvas {
+      width: 100%;
+      height: auto;
+      border-radius: 16px;
+      background: #111;
+      border: 1px solid rgba(255,255,255,.08);
+    }
+    .row { display:flex; gap:10px; margin-top: 10px; flex-wrap: wrap; }
+    h2, h3 { margin: 0 0 10px; }
+    .fieldLabel { display:block; margin: 10px 0 6px; font-size: 13px; color: rgba(255,255,255,.72); }
+    pre {
+      white-space: pre-wrap;
+      margin: 0;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.06);
+      padding: 12px;
+      border-radius: 10px;
+      overflow: auto;
+      max-height: 260px;
+    }
   </style>
 </head>
 
 <body>
   <div class="wrap">
     <div class="panel">
-      <h2 style="margin:0 0 10px;">Preview</h2>
+      <h2>Preview (1920×1080)</h2>
       <canvas id="card" width="1920" height="1080"></canvas>
       <div class="row">
-        <button id="downloadBtn" onclick="downloadPng()" disabled>Download PNG (1080×1920)</button>
+        <button id="downloadBtn" onclick="downloadPng()" disabled>Download PNG (1920×1080)</button>
         <button onclick="render()">Refresh</button>
       </div>
       <p class="muted" id="status" style="margin-top:10px;"></p>
     </div>
 
     <div class="panel">
-      <h2 style="margin:0 0 10px;">Input</h2>
-      <input id="url" placeholder="Paste Spotify track link…" />
+      <h2>Input</h2>
+      <input id="url" type="url" placeholder="Paste Spotify track link…" />
       <div class="row">
         <button id="loadBtn" onclick="loadTrack()">Load</button>
       </div>
@@ -40,14 +91,20 @@
       <h3 style="margin:18px 0 6px;">Options</h3>
       <label><input type="checkbox" id="optCover" checked onchange="render()">Album cover</label>
       <label><input type="checkbox" id="optTitle" checked onchange="render()">Song title</label>
-      <label><input type="checkbox" id="optArtist" checked onchange="render()">Artist name (fallback if missing)</label>
-      <label><input type="checkbox" id="optYear" onchange="render()">Year (not available in oEmbed MVP)</label>
+      <label><input type="checkbox" id="optArtist" checked onchange="render()">Artist name</label>
+      <label><input type="checkbox" id="optYear" checked onchange="render()">Year (manual)</label>
+
+      <h3 style="margin:18px 0 6px;">Manual fields</h3>
+      <span class="fieldLabel">Artist (override)</span>
+      <input id="artistManual" type="text" placeholder="Type artist name…" oninput="render()" />
+      <span class="fieldLabel">Year (override)</span>
+      <input id="yearManual" type="text" placeholder="e.g. 2021" inputmode="numeric" oninput="render()" />
 
       <h3 style="margin:18px 0 6px;">Debug</h3>
-      <pre id="debug" class="muted" style="white-space: pre-wrap; margin:0;"></pre>
+      <pre id="debug" class="muted"></pre>
 
       <p class="muted" style="margin-top:12px;">
-        Note: oEmbed may not include artist/year for some tracks. We’ll add a “year + album name” data source later.
+        Uses Spotify oEmbed for title + cover. Artist/year are manual overrides.
       </p>
     </div>
   </div>
@@ -62,90 +119,112 @@
       palette: ["#1a1a1a", "#2a2a2a", "#111"]
     };
 
-    async function loadTrack() {
-      setStatus("Resolving URL…");
-      const url = document.getElementById("url").value.trim();
-      if (!url) return setStatus("Please paste a Spotify link.");
+    function setStatus(s) { document.getElementById("status").textContent = s; }
+    function setDebug(obj) { document.getElementById("debug").textContent = JSON.stringify(obj, null, 2); }
 
-      // 1) resolve
-      const r1 = await fetch(`/api/resolve?url=${encodeURIComponent(url)}`);
-      const j1 = await r1.json();
-      if (!r1.ok) {
-        document.getElementById("debug").textContent = JSON.stringify(j1, null, 2);
-        return setStatus("Resolve failed. See debug.");
+    // Try /api/* first; fallback to /.netlify/functions/*
+    async function fetchJsonSmart(name, params) {
+      const qs = new URLSearchParams(params).toString();
+      const urls = [
+        `/api/${name}?${qs}`,
+        `/.netlify/functions/${name}?${qs}`
+      ];
+
+      let lastErr = null;
+      for (const u of urls) {
+        try {
+          const r = await fetch(u);
+          const text = await r.text();
+          let j = null;
+          try { j = JSON.parse(text); } catch { j = { raw: text }; }
+          if (!r.ok) throw new Error(`${u} -> ${r.status} ${text}`);
+          return { ok: true, url: u, data: j };
+        } catch (e) {
+          lastErr = e;
+        }
+      }
+      return { ok: false, error: String(lastErr || "Unknown error") };
+    }
+
+    async function loadTrack() {
+      const url = document.getElementById("url").value.trim();
+      if (!url) { setStatus("Please paste a Spotify link."); return; }
+
+      document.getElementById("downloadBtn").disabled = true;
+      setStatus("Resolving URL…");
+
+      const res1 = await fetchJsonSmart("resolve", { url });
+      if (!res1.ok) {
+        setDebug({ error: "resolve failed", detail: res1.error });
+        setStatus("Resolve failed. See Debug.");
+        return;
       }
 
-      state.canonicalUrl = j1.canonicalUrl || url;
+      state.canonicalUrl = res1.data.canonicalUrl || url;
 
-      // 2) oembed
       setStatus("Fetching oEmbed…");
-      const r2 = await fetch(`/api/oembed?url=${encodeURIComponent(state.canonicalUrl)}`);
-      const j2 = await r2.json();
-      document.getElementById("debug").textContent = JSON.stringify({ resolve: j1, oembed: j2 }, null, 2);
+      const res2 = await fetchJsonSmart("oembed", { url: state.canonicalUrl });
+      if (!res2.ok) {
+        setDebug({ resolve: res1.data, error: "oembed failed", detail: res2.error });
+        setStatus("oEmbed failed. See Debug.");
+        return;
+      }
 
-      if (!r2.ok) return setStatus("oEmbed failed. See debug.");
+      const o = res2.data;
 
-      state.title = j2.title || "";
-      state.coverUrl = j2.thumbnail_url || "";
+      state.title = o.title || "";
+      state.coverUrl = o.thumbnail_url || "";
 
-      // manual overrides (always win if provided)
-      const manualArtist = document.getElementById("artistManual")?.value?.trim() || "";
-      const manualYear = document.getElementById("yearManual")?.value?.trim() || "";
+      // Manual overrides (always win if provided)
+      const manualArtist = document.getElementById("artistManual").value.trim();
+      const manualYear = document.getElementById("yearManual").value.trim();
 
-      // if oEmbed has author_name you can keep it as fallback, but manual wins
-      state.artist = manualArtist || (j2.author_name || "");
+      state.artist = manualArtist || (o.author_name || "");
       state.year = manualYear || "";
 
+      setDebug({ resolve: res1.data, oembed: o });
 
-      // palette from cover
+      // Extract palette from cover (best-effort)
       if (state.coverUrl) {
         setStatus("Loading cover & extracting colors…");
         try {
           state.palette = await extractPalette(state.coverUrl);
-        } catch (e) {
-          // fallback
-        }
+        } catch (e) { /* keep fallback */ }
       }
 
+      setStatus("Rendering…");
+      await render();
       document.getElementById("downloadBtn").disabled = false;
-      setStatus("Loaded. Rendering…");
-      render();
       setStatus("Ready.");
     }
-
-    function setStatus(s) { document.getElementById("status").textContent = s; }
 
     async function render() {
       const canvas = document.getElementById("card");
       const ctx = canvas.getContext("2d");
       const W = canvas.width, H = canvas.height;
 
-      // options（你可以保留原本 checkbox）
-      const showCover = document.getElementById("optCover")?.checked ?? true;
-      const showTitle = document.getElementById("optTitle")?.checked ?? true;
-      const showArtist = document.getElementById("optArtist")?.checked ?? true;
+      const showCover = document.getElementById("optCover").checked;
+      const showTitle = document.getElementById("optTitle").checked;
+      const showArtist = document.getElementById("optArtist").checked;
+      const showYear = document.getElementById("optYear").checked;
 
-      <h3 style="margin:18px 0 6px;">Manual fields</h3>
+      // Live overrides while typing
+      const manualArtist = document.getElementById("artistManual").value.trim();
+      const manualYear = document.getElementById("yearManual").value.trim();
 
-      <label style="display:block; margin:10px 0 6px;">Artist</label>
-      <input id="artistManual" placeholder="Type artist name…" oninput="render()" />
+      const title = state.title || "—";
+      const artist = manualArtist || state.artist || "Unknown artist";
+      const year = manualYear || state.year || "";
 
-      <label style="display:block; margin:10px 0 6px;">Year</label>
-      <input id="yearManual" placeholder="e.g. 2021" inputmode="numeric" oninput="render()" />
-
-
-      // ---------- background: dark base + glow from palette ----------
+      // Background
       ctx.clearRect(0, 0, W, H);
       ctx.fillStyle = "#0b0b0d";
       ctx.fillRect(0, 0, W, H);
 
       const [c1, c2, c3] = state.palette || ["#1a1a1a", "#2a2a2a", "#111"];
+      drawRadialGlow(ctx, 460, H/2, 720, c1, 0.26);
+      drawRadialGlow(ctx, 560, H/2 + 120, 900, c2, 0.18);
 
-      // big soft glow on left (behind cover)
-      drawRadialGlow(ctx, 420, H/2, 620, c1, 0.28);
-      drawRadialGlow(ctx, 520, H/2 + 120, 760, c2, 0.18);
-
-      // subtle horizontal gradient to add depth
       const g = ctx.createLinearGradient(0, 0, W, 0);
       g.addColorStop(0, "rgba(255,255,255,0.04)");
       g.addColorStop(0.45, "rgba(255,255,255,0)");
@@ -153,13 +232,10 @@
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, W, H);
 
-      // texture
       drawNoise(ctx, W, H, 0.035);
 
-      // ---------- layout ----------
+      // Layout
       const padX = 120;
-      const padY = 120;
-
       const coverSize = 520;
       const coverX = padX;
       const coverY = (H - coverSize) / 2;
@@ -167,113 +243,75 @@
       const textX = coverX + coverSize + 120;
       const textMaxW = W - textX - padX;
 
-      // cover
+      // Cover
       if (showCover && state.coverUrl) {
-        const img = await loadImage(state.coverUrl);
-        // shadow
-        ctx.save();
-        ctx.shadowColor = "rgba(0,0,0,0.55)";
-        ctx.shadowBlur = 40;
-        ctx.shadowOffsetY = 18;
-        roundRectImage(ctx, img, coverX, coverY, coverSize, coverSize, 36);
-        ctx.restore();
+        try {
+          const img = await loadImage(state.coverUrl);
+          ctx.save();
+          ctx.shadowColor = "rgba(0,0,0,0.55)";
+          ctx.shadowBlur = 40;
+          ctx.shadowOffsetY = 18;
+          roundRectImage(ctx, img, coverX, coverY, coverSize, coverSize, 36);
+          ctx.restore();
 
-        // subtle inner highlight
-        ctx.save();
-        ctx.globalAlpha = 0.12;
-        ctx.strokeStyle = "rgba(255,255,255,0.8)";
-        ctx.lineWidth = 3;
-        roundedRectPath(ctx, coverX+2, coverY+2, coverSize-4, coverSize-4, 34);
-        ctx.stroke();
-        ctx.restore();
+          ctx.save();
+          ctx.globalAlpha = 0.12;
+          ctx.strokeStyle = "rgba(255,255,255,0.8)";
+          ctx.lineWidth = 3;
+          roundedRectPath(ctx, coverX+2, coverY+2, coverSize-4, coverSize-4, 34);
+          ctx.stroke();
+          ctx.restore();
+        } catch (e) {}
       }
 
-  // Title + artist
-  let y = H/2 - 10;
+      // Text block (centered)
+      ctx.textAlign = "left";
+      ctx.textBaseline = "alphabetic";
 
-  const title = state.title || "—";
-  const artist = state.artist || "Unknown artist";
+      const titleH = showTitle ? 128 : 0;
+      const artistH = showArtist ? 72 : 0;
+      const yearH = (showYear && year) ? 64 : 0;
+      const gapTitleArtist = (showTitle && showArtist) ? 20 : 0;
+      const gapArtistYear = (showArtist && showYear && year) ? 18 : 0;
+      const blockH = titleH + gapTitleArtist + artistH + gapArtistYear + yearH;
 
-  if (showTitle) {
-    ctx.fillStyle = "rgba(255,255,255,0.92)";
-    ctx.textAlign = "left";
-    ctx.textBaseline = "alphabetic";
+      let y = (H - blockH) / 2 + (showTitle ? 112 : 52);
 
-    // big Chinese title needs a CJK-friendly fallback
-    ctx.font = "800 112px system-ui, -apple-system, Segoe UI, Roboto, 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif";
-    y = drawWrappedText(ctx, title, textX, y, textMaxW, 128, 2);
+      if (showTitle) {
+        ctx.fillStyle = "rgba(255,255,255,0.92)";
+        ctx.font = "800 112px system-ui, -apple-system, Segoe UI, Roboto, 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif";
+        y = drawWrappedText(ctx, title, textX, y, textMaxW, 128, 2);
+        y += 20;
+      }
 
-    // spacing between title and artist
-    y += 20;
-  }
+      if (showArtist) {
+        ctx.fillStyle = "rgba(255,255,255,0.72)";
+        ctx.font = "650 52px system-ui, -apple-system, Segoe UI, Roboto, 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif";
+        y = drawWrappedText(ctx, artist, textX, y, textMaxW, 66, 1);
+        y += 18;
+      }
 
-  if (showArtist) {
-    ctx.fillStyle = "rgba(255,255,255,0.72)";
-    ctx.font = "650 52px system-ui, -apple-system, Segoe UI, Roboto, 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif";
-    drawWrappedText(ctx, artist, textX, y, textMaxW, 64, 1);
+      if (showYear && year) {
+        ctx.fillStyle = "rgba(255,255,255,0.52)";
+        ctx.font = "600 42px system-ui, -apple-system, Segoe UI, Roboto, 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif";
+        ctx.fillText(year, textX, y);
+      }
 
-
-  }
-
-  if (document.getElementById("optYear")?.checked) {
-    const year = (document.getElementById("yearManual")?.value?.trim() || "").trim();
-    if (year) {
-      ctx.fillStyle = "rgba(255,255,255,0.52)";
-      ctx.font = "600 42px system-ui, -apple-system, Segoe UI, Roboto, 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif";
-      ctx.fillText(year, textX, y + 78);
+      // Footer
+      ctx.fillStyle = "rgba(255,255,255,0.22)";
+      ctx.font = "500 28px system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
+      ctx.fillText("Generated via Spotify oEmbed", padX, H - 70);
     }
-  }
-
-
-
-  // small footer (optional)
-  ctx.fillStyle = "rgba(255,255,255,0.22)";
-  ctx.font = "500 28px system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
-  ctx.fillText("Generated via Spotify oEmbed", padX, H - 70);
-}
-
-// soft glow helper
-function drawRadialGlow(ctx, cx, cy, r, color, alpha) {
-  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-  g.addColorStop(0, hexToRgba(color, alpha));
-  g.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = g;
-  ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
-}
-
-function hexToRgba(hex, a) {
-  const h = hex.replace("#", "");
-  const r = parseInt(h.slice(0,2), 16);
-  const g = parseInt(h.slice(2,4), 16);
-  const b = parseInt(h.slice(4,6), 16);
-  return `rgba(${r},${g},${b},${a})`;
-}
-
 
     function downloadPng() {
       const canvas = document.getElementById("card");
       const a = document.createElement("a");
-      a.download = "spotify-card.png";
+      a.download = "spotify-card-1920x1080.png";
       a.href = canvas.toDataURL("image/png");
       a.click();
     }
 
-    // ---------- helpers ----------
-    function drawNoise(ctx, W, H, alpha) {
-      const imgData = ctx.getImageData(0, 0, W, H);
-      const d = imgData.data;
-      for (let i = 0; i < d.length; i += 4) {
-        const n = (Math.random() - 0.5) * 24;
-        d[i] += n; d[i+1] += n; d[i+2] += n;
-      }
-      ctx.putImageData(imgData, 0, 0);
-      ctx.save();
-      ctx.globalAlpha = alpha;
-      ctx.fillStyle = "#000";
-      ctx.fillRect(0, 0, W, H);
-      ctx.restore();
-    }
-
+    // ---- helpers ----
     function loadImage(url) {
       return new Promise((resolve, reject) => {
         const img = new Image();
@@ -289,11 +327,10 @@ function hexToRgba(hex, a) {
       const c = document.createElement("canvas");
       const s = 80;
       c.width = s; c.height = s;
-      const x = c.getContext("2d");
+      const x = c.getContext("2d", { willReadFrequently: true });
       x.drawImage(img, 0, 0, s, s);
       const data = x.getImageData(0, 0, s, s).data;
 
-      // simple quantize-ish: sample pixels, bucket by rough RGB
       const buckets = new Map();
       for (let i = 0; i < data.length; i += 16) {
         const r = data[i], g = data[i+1], b = data[i+2];
@@ -301,26 +338,26 @@ function hexToRgba(hex, a) {
         buckets.set(key, (buckets.get(key) || 0) + 1);
       }
 
-      const top = [...buckets.entries()].sort((a,b)=>b[1]-a[1]).slice(0,6).map(([k])=>{
-        const [rr,gg,bb] = k.split(",").map(v=>parseInt(v,10)*24);
-        return rgbToHex(clamp(rr), clamp(gg), clamp(bb));
-      });
+      const top = [...buckets.entries()]
+        .sort((a,b)=>b[1]-a[1])
+        .slice(0, 8)
+        .map(([k]) => {
+          const [rr,gg,bb] = k.split(",").map(v => parseInt(v,10)*24);
+          return rgbToHex(clamp(rr), clamp(gg), clamp(bb));
+        });
 
-      // pick 3 distinct-ish colors
       const pick = [];
       for (const col of top) {
         if (pick.length === 0) pick.push(col);
         else if (pick.length === 1 && distanceHex(col, pick[0]) > 60) pick.push(col);
         else if (pick.length === 2 && distanceHex(col, pick[0]) > 60 && distanceHex(col, pick[1]) > 60) { pick.push(col); break; }
       }
-      while (pick.length < 3) pick.push(["#1a1a1a","#2a2a2a","#111"][pick.length]);
+      while (pick.length < 3) pick.push(["#1a1a1a", "#2a2a2a", "#111"][pick.length]);
       return pick;
     }
 
     function clamp(v){ return Math.max(0, Math.min(255, v)); }
-    function rgbToHex(r,g,b){
-      return "#" + [r,g,b].map(v=>v.toString(16).padStart(2,"0")).join("");
-    }
+    function rgbToHex(r,g,b){ return "#" + [r,g,b].map(v=>v.toString(16).padStart(2,"0")).join(""); }
     function hexToRgb(h){
       const m = h.replace("#","").match(/.{2}/g).map(x=>parseInt(x,16));
       return {r:m[0], g:m[1], b:m[2]};
@@ -328,6 +365,37 @@ function hexToRgba(hex, a) {
     function distanceHex(a,b){
       const A = hexToRgb(a), B = hexToRgb(b);
       return Math.sqrt((A.r-B.r)**2 + (A.g-B.g)**2 + (A.b-B.b)**2);
+    }
+
+    function drawNoise(ctx, W, H, alpha) {
+      const imgData = ctx.getImageData(0, 0, W, H);
+      const d = imgData.data;
+      for (let i = 0; i < d.length; i += 4) {
+        const n = (Math.random() - 0.5) * 24;
+        d[i] += n; d[i+1] += n; d[i+2] += n;
+      }
+      ctx.putImageData(imgData, 0, 0);
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+    }
+
+    function hexToRgba(hex, a) {
+      const h = hex.replace("#", "");
+      const r = parseInt(h.slice(0,2), 16);
+      const g = parseInt(h.slice(2,4), 16);
+      const b = parseInt(h.slice(4,6), 16);
+      return `rgba(${r},${g},${b},${a})`;
+    }
+
+    function drawRadialGlow(ctx, cx, cy, r, color, alpha) {
+      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+      g.addColorStop(0, hexToRgba(color, alpha));
+      g.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
     }
 
     function roundedRectPath(ctx, x, y, w, h, r) {
@@ -348,11 +416,13 @@ function hexToRgba(hex, a) {
       ctx.restore();
     }
 
+    // Returns updated y after drawing (up to maxLines)
     function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight, maxLines) {
       const words = String(text).split(/\s+/);
       let line = "";
       let lines = 0;
-      for (let i=0; i<words.length; i++) {
+
+      for (let i = 0; i < words.length; i++) {
         const test = line ? line + " " + words[i] : words[i];
         if (ctx.measureText(test).width <= maxWidth) {
           line = test;
@@ -364,20 +434,19 @@ function hexToRgba(hex, a) {
           if (lines >= maxLines-1) break;
         }
       }
-      // last line
+
       if (lines < maxLines) {
         const remaining = line || "";
-        // ellipsis if too long
         let out = remaining;
         while (ctx.measureText(out).width > maxWidth && out.length > 1) out = out.slice(0, -1);
-        if (out !== remaining) out = out.slice(0, Math.max(0,out.length-1)) + "…";
+        if (out !== remaining) out = out.slice(0, Math.max(0, out.length-1)) + "…";
         ctx.fillText(out, x, y);
         y += lineHeight;
       }
       return y;
     }
 
-    // Initial render placeholder
+    // Initial placeholder
     render();
   </script>
 </body>
