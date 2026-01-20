@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Spotify Card (Banner Proof of Concept)</title>
+  <title>Spotify Card (Banner POC)</title>
   <style>
     :root { color-scheme: dark; }
     body {
@@ -16,7 +16,7 @@
       grid-template-columns: 1fr 420px;
       gap: 18px;
       align-items: start;
-      max-width: 1300px;
+      max-width: 1200px;
       margin: 0 auto;
     }
     .panel {
@@ -49,8 +49,8 @@
     canvas {
       width: 100%;
       height: auto;
-      border-radius: 16px;
-      background: #111;
+      border-radius: 12px;
+      background: #0b0b0d;
       border: 1px solid rgba(255,255,255,.08);
     }
     .row { display:flex; gap:10px; margin-top: 10px; flex-wrap: wrap; }
@@ -72,10 +72,10 @@
 <body>
   <div class="wrap">
     <div class="panel">
-      <h2>Preview (1920×1080)</h2>
-      <canvas id="card" width="1920" height="1080"></canvas>
+      <h2>Preview (638×300)</h2>
+      <canvas id="card" width="638" height="300"></canvas>
       <div class="row">
-        <button id="downloadBtn" onclick="downloadPng()" disabled>Download PNG (1920×1080)</button>
+        <button id="downloadBtn" onclick="downloadPng()" disabled>Download PNG (638×300)</button>
         <button onclick="render()">Refresh</button>
       </div>
       <p class="muted" id="status" style="margin-top:10px;"></p>
@@ -103,9 +103,7 @@
       <h3 style="margin:18px 0 6px;">Debug</h3>
       <pre id="debug" class="muted"></pre>
 
-      <p class="muted" style="margin-top:12px;">
-        Uses Spotify oEmbed for title + cover. Artist/year are manual overrides.
-      </p>
+      <p class="muted" style="margin-top:12px;">Uses Spotify oEmbed for title + cover. Artist/year are manual overrides.</p>
     </div>
   </div>
 
@@ -115,8 +113,7 @@
       title: "",
       artist: "",
       year: "",
-      coverUrl: "",
-      palette: ["#1a1a1a", "#2a2a2a", "#111"]
+      coverUrl: ""
     };
 
     function setStatus(s) { document.getElementById("status").textContent = s; }
@@ -129,7 +126,6 @@
         `/api/${name}?${qs}`,
         `/.netlify/functions/${name}?${qs}`
       ];
-
       let lastErr = null;
       for (const u of urls) {
         try {
@@ -171,26 +167,16 @@
       }
 
       const o = res2.data;
-
       state.title = o.title || "";
       state.coverUrl = o.thumbnail_url || "";
 
       // Manual overrides (always win if provided)
       const manualArtist = document.getElementById("artistManual").value.trim();
       const manualYear = document.getElementById("yearManual").value.trim();
-
       state.artist = manualArtist || (o.author_name || "");
       state.year = manualYear || "";
 
       setDebug({ resolve: res1.data, oembed: o });
-
-      // Extract palette from cover (best-effort)
-      if (state.coverUrl) {
-        setStatus("Loading cover & extracting colors…");
-        try {
-          state.palette = await extractPalette(state.coverUrl);
-        } catch (e) { /* keep fallback */ }
-      }
 
       setStatus("Rendering…");
       await render();
@@ -216,25 +202,20 @@
       const artist = manualArtist || state.artist || "Unknown artist";
       const year = manualYear || state.year || "";
 
-      // Background
+      // Plain background (match reference)
       ctx.clearRect(0, 0, W, H);
       ctx.fillStyle = "#0b0b0d";
       ctx.fillRect(0, 0, W, H);
 
-      const [c1, c2, c3] = state.palette || ["#1a1a1a", "#2a2a2a", "#111"];
-      
+      // Layout tuned for 638×300 reference
+      const padX = 34;
+      const coverSize = 182;
+      const gap = 46;
 
-      
-
-      
-
-      // Layout
-      const padX = 96;
-      const coverSize = 420;
       const coverX = padX;
-      const coverY = (H - coverSize) / 2;
+      const coverY = Math.round((H - coverSize) / 2);
 
-      const textX = coverX + coverSize + 120;
+      const textX = coverX + coverSize + gap;
       const textMaxW = W - textX - padX;
 
       // Cover
@@ -243,61 +224,61 @@
           const img = await loadImage(state.coverUrl);
           ctx.save();
           ctx.shadowColor = "rgba(0,0,0,0.55)";
-          ctx.shadowBlur = 40;
-          ctx.shadowOffsetY = 18;
-          roundRectImage(ctx, img, coverX, coverY, coverSize, coverSize, 36);
-          ctx.restore();
-
-          ctx.save();
-          ctx.globalAlpha = 0.12;
-          ctx.strokeStyle = "rgba(255,255,255,0.8)";
-          ctx.lineWidth = 3;
-          roundedRectPath(ctx, coverX+2, coverY+2, coverSize-4, coverSize-4, 34);
-          ctx.stroke();
+          ctx.shadowBlur = 18;
+          ctx.shadowOffsetY = 6;
+          roundRectImage(ctx, img, coverX, coverY, coverSize, coverSize, 22);
           ctx.restore();
         } catch (e) {}
       }
 
-      // Text block (centered)
+      // Text block: center the title+artist(+year) vertically like the reference
       ctx.textAlign = "left";
       ctx.textBaseline = "alphabetic";
 
-      const titleH = showTitle ? 112 : 0;
-      const artistH = showArtist ? 52 : 0;
-      const yearH = (showYear && year) ? 64 : 0;
-      const gapTitleArtist = (showTitle && showArtist) ? 20 : 0;
-      const gapArtistYear = (showArtist && showYear && year) ? 18 : 0;
-      const blockH = titleH + gapTitleArtist + artistH + gapArtistYear + yearH;
+      const titleSize = 56;
+      const artistSize = 22;
+      const yearSize = 18;
 
-      let y = (H - blockH) / 2 + (showTitle ? 112 : 52);
+      const titleLineH = 64;
+      const artistLineH = 30;
+      const yearLineH = 24;
+
+      let blockH = 0;
+      if (showTitle) blockH += titleLineH;
+      if (showArtist) blockH += artistLineH;
+      if (showYear && year) blockH += yearLineH;
+
+      // subtle spacing like Spotify banner
+      if (showTitle && showArtist) blockH += 12;
+      if (showArtist && showYear && year) blockH += 8;
+
+      let y = Math.round((H - blockH) / 2) + titleSize; // baseline for first line
 
       if (showTitle) {
-        ctx.fillStyle = "rgba(255,255,255,0.92)";
-        ctx.font = "800 88px system-ui, -apple-system, Segoe UI, Roboto, 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif";
-        y = drawWrappedText(ctx, title, textX, y, textMaxW, 128, 2);
-        y += 20;
+        ctx.fillStyle = "rgba(255,255,255,0.94)";
+        ctx.font = `800 ${titleSize}px system-ui, -apple-system, Segoe UI, Roboto, 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif`;
+        y = drawWrappedText(ctx, title, textX, y, textMaxW, titleLineH, 1);
+        y += 12;
       }
 
       if (showArtist) {
-        ctx.fillStyle = "rgba(255,255,255,0.72)";
-        ctx.font = "650 52px system-ui, -apple-system, Segoe UI, Roboto, 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif";
-        y = drawWrappedText(ctx, artist, textX, y, textMaxW, 66, 1);
-        y += 18;
+        ctx.fillStyle = "rgba(255,255,255,0.70)";
+        ctx.font = `650 ${artistSize}px system-ui, -apple-system, Segoe UI, Roboto, 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif`;
+        y = drawWrappedText(ctx, artist, textX, y, textMaxW, artistLineH, 1);
+        y += 8;
       }
 
       if (showYear && year) {
-        ctx.fillStyle = "rgba(255,255,255,0.52)";
-        ctx.font = "600 34px system-ui, -apple-system, Segoe UI, Roboto, 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif";
+        ctx.fillStyle = "rgba(255,255,255,0.46)";
+        ctx.font = `600 ${yearSize}px system-ui, -apple-system, Segoe UI, Roboto, 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif`;
         ctx.fillText(year, textX, y);
       }
-
-      
     }
 
     function downloadPng() {
       const canvas = document.getElementById("card");
       const a = document.createElement("a");
-      a.download = "spotify-card-1920x1080.png";
+      a.download = "spotify-banner-638x300.png";
       a.href = canvas.toDataURL("image/png");
       a.click();
     }
@@ -312,63 +293,6 @@
         img.src = url;
       });
     }
-
-    async function extractPalette(coverUrl) {
-      const img = await loadImage(coverUrl);
-      const c = document.createElement("canvas");
-      const s = 80;
-      c.width = s; c.height = s;
-      const x = c.getContext("2d", { willReadFrequently: true });
-      x.drawImage(img, 0, 0, s, s);
-      const data = x.getImageData(0, 0, s, s).data;
-
-      const buckets = new Map();
-      for (let i = 0; i < data.length; i += 16) {
-        const r = data[i], g = data[i+1], b = data[i+2];
-        const key = `${Math.round(r/24)},${Math.round(g/24)},${Math.round(b/24)}`;
-        buckets.set(key, (buckets.get(key) || 0) + 1);
-      }
-
-      const top = [...buckets.entries()]
-        .sort((a,b)=>b[1]-a[1])
-        .slice(0, 8)
-        .map(([k]) => {
-          const [rr,gg,bb] = k.split(",").map(v => parseInt(v,10)*24);
-          return rgbToHex(clamp(rr), clamp(gg), clamp(bb));
-        });
-
-      const pick = [];
-      for (const col of top) {
-        if (pick.length === 0) pick.push(col);
-        else if (pick.length === 1 && distanceHex(col, pick[0]) > 60) pick.push(col);
-        else if (pick.length === 2 && distanceHex(col, pick[0]) > 60 && distanceHex(col, pick[1]) > 60) { pick.push(col); break; }
-      }
-      while (pick.length < 3) pick.push(["#1a1a1a", "#2a2a2a", "#111"][pick.length]);
-      return pick;
-    }
-
-    function clamp(v){ return Math.max(0, Math.min(255, v)); }
-    function rgbToHex(r,g,b){ return "#" + [r,g,b].map(v=>v.toString(16).padStart(2,"0")).join(""); }
-    function hexToRgb(h){
-      const m = h.replace("#","").match(/.{2}/g).map(x=>parseInt(x,16));
-      return {r:m[0], g:m[1], b:m[2]};
-    }
-    function distanceHex(a,b){
-      const A = hexToRgb(a), B = hexToRgb(b);
-      return Math.sqrt((A.r-B.r)**2 + (A.g-B.g)**2 + (A.b-B.b)**2);
-    }
-
-    
-
-    function hexToRgba(hex, a) {
-      const h = hex.replace("#", "");
-      const r = parseInt(h.slice(0,2), 16);
-      const g = parseInt(h.slice(2,4), 16);
-      const b = parseInt(h.slice(4,6), 16);
-      return `rgba(${r},${g},${b},${a})`;
-    }
-
-    
 
     function roundedRectPath(ctx, x, y, w, h, r) {
       ctx.beginPath();
@@ -390,35 +314,18 @@
 
     // Returns updated y after drawing (up to maxLines)
     function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight, maxLines) {
-      const words = String(text).split(/\s+/);
-      let line = "";
-      let lines = 0;
-
-      for (let i = 0; i < words.length; i++) {
-        const test = line ? line + " " + words[i] : words[i];
-        if (ctx.measureText(test).width <= maxWidth) {
-          line = test;
-        } else {
-          ctx.fillText(line, x, y);
-          y += lineHeight;
-          lines++;
-          line = words[i];
-          if (lines >= maxLines-1) break;
-        }
+      // For this banner POC we keep maxLines=1, but still ellipsize if too long
+      const str = String(text || "");
+      let out = str;
+      while (ctx.measureText(out).width > maxWidth && out.length > 1) {
+        out = out.slice(0, -1);
       }
-
-      if (lines < maxLines) {
-        const remaining = line || "";
-        let out = remaining;
-        while (ctx.measureText(out).width > maxWidth && out.length > 1) out = out.slice(0, -1);
-        if (out !== remaining) out = out.slice(0, Math.max(0, out.length-1)) + "…";
-        ctx.fillText(out, x, y);
-        y += lineHeight;
-      }
-      return y;
+      if (out !== str) out = out.slice(0, Math.max(0, out.length-1)) + "…";
+      ctx.fillText(out, x, y);
+      return y + lineHeight;
     }
 
-    // Initial placeholder
+    // Initial placeholder render
     render();
   </script>
 </body>
