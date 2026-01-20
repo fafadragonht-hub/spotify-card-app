@@ -86,9 +86,16 @@
       if (!r2.ok) return setStatus("oEmbed failed. See debug.");
 
       state.title = j2.title || "";
-      state.artist = j2.author_name || ""; // may be missing
       state.coverUrl = j2.thumbnail_url || "";
-      state.year = ""; // oEmbed MVP no year
+
+      // manual overrides (always win if provided)
+      const manualArtist = document.getElementById("artistManual")?.value?.trim() || "";
+      const manualYear = document.getElementById("yearManual")?.value?.trim() || "";
+
+      // if oEmbed has author_name you can keep it as fallback, but manual wins
+      state.artist = manualArtist || (j2.author_name || "");
+      state.year = manualYear || "";
+
 
       // palette from cover
       if (state.coverUrl) {
@@ -117,6 +124,15 @@
       const showCover = document.getElementById("optCover")?.checked ?? true;
       const showTitle = document.getElementById("optTitle")?.checked ?? true;
       const showArtist = document.getElementById("optArtist")?.checked ?? true;
+
+      <h3 style="margin:18px 0 6px;">Manual fields</h3>
+
+      <label style="display:block; margin:10px 0 6px;">Artist</label>
+      <input id="artistManual" placeholder="Type artist name…" oninput="render()" />
+
+      <label style="display:block; margin:10px 0 6px;">Year</label>
+      <input id="yearManual" placeholder="e.g. 2021" inputmode="numeric" oninput="render()" />
+
 
       // ---------- background: dark base + glow from palette ----------
       ctx.clearRect(0, 0, W, H);
@@ -195,7 +211,20 @@
     ctx.fillStyle = "rgba(255,255,255,0.72)";
     ctx.font = "650 52px system-ui, -apple-system, Segoe UI, Roboto, 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif";
     drawWrappedText(ctx, artist, textX, y, textMaxW, 64, 1);
+
+
   }
+
+  if (document.getElementById("optYear")?.checked) {
+    const year = (document.getElementById("yearManual")?.value?.trim() || "").trim();
+    if (year) {
+      ctx.fillStyle = "rgba(255,255,255,0.52)";
+      ctx.font = "600 42px system-ui, -apple-system, Segoe UI, Roboto, 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif";
+      ctx.fillText(year, textX, y + 78);
+    }
+  }
+
+
 
   // small footer (optional)
   ctx.fillStyle = "rgba(255,255,255,0.22)";
