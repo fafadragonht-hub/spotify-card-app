@@ -222,21 +222,15 @@
       ctx.fillRect(0, 0, W, H);
 
       const [c1, c2, c3] = state.palette || ["#1a1a1a", "#2a2a2a", "#111"];
-      drawRadialGlow(ctx, 460, H/2, 720, c1, 0.26);
-      drawRadialGlow(ctx, 560, H/2 + 120, 900, c2, 0.18);
+      
 
-      const g = ctx.createLinearGradient(0, 0, W, 0);
-      g.addColorStop(0, "rgba(255,255,255,0.04)");
-      g.addColorStop(0.45, "rgba(255,255,255,0)");
-      g.addColorStop(1, "rgba(0,0,0,0.18)");
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, W, H);
+      
 
-      drawNoise(ctx, W, H, 0.035);
+      
 
       // Layout
-      const padX = 120;
-      const coverSize = 520;
+      const padX = 96;
+      const coverSize = 420;
       const coverX = padX;
       const coverY = (H - coverSize) / 2;
 
@@ -268,8 +262,8 @@
       ctx.textAlign = "left";
       ctx.textBaseline = "alphabetic";
 
-      const titleH = showTitle ? 128 : 0;
-      const artistH = showArtist ? 72 : 0;
+      const titleH = showTitle ? 112 : 0;
+      const artistH = showArtist ? 52 : 0;
       const yearH = (showYear && year) ? 64 : 0;
       const gapTitleArtist = (showTitle && showArtist) ? 20 : 0;
       const gapArtistYear = (showArtist && showYear && year) ? 18 : 0;
@@ -279,7 +273,7 @@
 
       if (showTitle) {
         ctx.fillStyle = "rgba(255,255,255,0.92)";
-        ctx.font = "800 112px system-ui, -apple-system, Segoe UI, Roboto, 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif";
+        ctx.font = "800 88px system-ui, -apple-system, Segoe UI, Roboto, 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif";
         y = drawWrappedText(ctx, title, textX, y, textMaxW, 128, 2);
         y += 20;
       }
@@ -293,14 +287,11 @@
 
       if (showYear && year) {
         ctx.fillStyle = "rgba(255,255,255,0.52)";
-        ctx.font = "600 42px system-ui, -apple-system, Segoe UI, Roboto, 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif";
+        ctx.font = "600 34px system-ui, -apple-system, Segoe UI, Roboto, 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif";
         ctx.fillText(year, textX, y);
       }
 
-      // Footer
-      ctx.fillStyle = "rgba(255,255,255,0.22)";
-      ctx.font = "500 28px system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
-      ctx.fillText("Generated via Spotify oEmbed", padX, H - 70);
+      
     }
 
     function downloadPng() {
@@ -367,20 +358,7 @@
       return Math.sqrt((A.r-B.r)**2 + (A.g-B.g)**2 + (A.b-B.b)**2);
     }
 
-    function drawNoise(ctx, W, H, alpha) {
-      const imgData = ctx.getImageData(0, 0, W, H);
-      const d = imgData.data;
-      for (let i = 0; i < d.length; i += 4) {
-        const n = (Math.random() - 0.5) * 24;
-        d[i] += n; d[i+1] += n; d[i+2] += n;
-      }
-      ctx.putImageData(imgData, 0, 0);
-      ctx.save();
-      ctx.globalAlpha = alpha;
-      ctx.fillStyle = "#000";
-      ctx.fillRect(0, 0, W, H);
-      ctx.restore();
-    }
+    
 
     function hexToRgba(hex, a) {
       const h = hex.replace("#", "");
@@ -390,13 +368,7 @@
       return `rgba(${r},${g},${b},${a})`;
     }
 
-    function drawRadialGlow(ctx, cx, cy, r, color, alpha) {
-      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-      g.addColorStop(0, hexToRgba(color, alpha));
-      g.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.fillStyle = g;
-      ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
-    }
+    
 
     function roundedRectPath(ctx, x, y, w, h, r) {
       ctx.beginPath();
