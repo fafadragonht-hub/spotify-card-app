@@ -22,7 +22,7 @@
   <div class="wrap">
     <div class="panel">
       <h2 style="margin:0 0 10px;">Preview</h2>
-      <canvas id="card" width="1080" height="1920"></canvas>
+      <canvas id="card" width="1920" height="1080"></canvas>
       <div class="row">
         <button id="downloadBtn" onclick="downloadPng()" disabled>Download PNG (1080×1920)</button>
         <button onclick="render()">Refresh</button>
@@ -113,77 +113,113 @@
       const ctx = canvas.getContext("2d");
       const W = canvas.width, H = canvas.height;
 
-      const showCover = document.getElementById("optCover").checked;
-      const showTitle = document.getElementById("optTitle").checked;
-      const showArtist = document.getElementById("optArtist").checked;
-      const showYear = document.getElementById("optYear").checked;
+      // options（你可以保留原本 checkbox）
+      const showCover = document.getElementById("optCover")?.checked ?? true;
+      const showTitle = document.getElementById("optTitle")?.checked ?? true;
+      const showArtist = document.getElementById("optArtist")?.checked ?? true;
 
-      // background gradient from palette
-      const [c1, c2, c3] = state.palette;
-      const g = ctx.createLinearGradient(0, 0, W, H);
-      g.addColorStop(0, c1);
-      g.addColorStop(0.55, c2);
-      g.addColorStop(1, c3);
+      // ---------- background: dark base + glow from palette ----------
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = "#0b0b0d";
+      ctx.fillRect(0, 0, W, H);
+
+      const [c1, c2, c3] = state.palette || ["#1a1a1a", "#2a2a2a", "#111"];
+
+      // big soft glow on left (behind cover)
+      drawRadialGlow(ctx, 420, H/2, 620, c1, 0.28);
+      drawRadialGlow(ctx, 520, H/2 + 120, 760, c2, 0.18);
+
+      // subtle horizontal gradient to add depth
+      const g = ctx.createLinearGradient(0, 0, W, 0);
+      g.addColorStop(0, "rgba(255,255,255,0.04)");
+      g.addColorStop(0.45, "rgba(255,255,255,0)");
+      g.addColorStop(1, "rgba(0,0,0,0.18)");
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, W, H);
 
-      // subtle texture (noise)
-      drawNoise(ctx, W, H, 0.06);
+      // texture
+      drawNoise(ctx, W, H, 0.035);
 
-      // layout
-      const pad = 96;
-      const coverSize = 820;
-      const coverX = (W - coverSize) / 2;
-      const coverY = 190;
+      // ---------- layout ----------
+      const padX = 120;
+      const padY = 120;
+
+      const coverSize = 520;
+      const coverX = padX;
+      const coverY = (H - coverSize) / 2;
+
+      const textX = coverX + coverSize + 120;
+      const textMaxW = W - textX - padX;
 
       // cover
       if (showCover && state.coverUrl) {
         const img = await loadImage(state.coverUrl);
-        roundRectImage(ctx, img, coverX, coverY, coverSize, coverSize, 36);
-        // slight shadow under cover
+        // shadow
         ctx.save();
-        ctx.globalAlpha = 0.16;
-        ctx.fillStyle = "#000";
-        ctx.beginPath();
-        roundedRectPath(ctx, coverX, coverY + coverSize + 28, coverSize, 18, 9);
-        ctx.fill();
+        ctx.shadowColor = "rgba(0,0,0,0.55)";
+        ctx.shadowBlur = 40;
+        ctx.shadowOffsetY = 18;
+        roundRectImage(ctx, img, coverX, coverY, coverSize, coverSize, 36);
+        ctx.restore();
+
+        // subtle inner highlight
+        ctx.save();
+        ctx.globalAlpha = 0.12;
+        ctx.strokeStyle = "rgba(255,255,255,0.8)";
+        ctx.lineWidth = 3;
+        roundedRectPath(ctx, coverX+2, coverY+2, coverSize-4, coverSize-4, 34);
+        ctx.stroke();
         ctx.restore();
       }
 
-      // text block
-      const textY = coverY + coverSize + 120;
+  // Title + artist
+  let y = H/2 - 10;
 
-      ctx.fillStyle = "rgba(255,255,255,.92)";
-      ctx.textAlign = "left";
+  const title = state.title || "—";
+  const artist = state.artist || "Unknown artist";
 
-      let y = textY;
+  if (showTitle) {
+    ctx.fillStyle = "rgba(255,255,255,0.92)";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
 
-      if (showTitle) {
-        ctx.font = "800 86px system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
-        const title = state.title || "—";
-        y = drawWrappedText(ctx, title, pad, y, W - pad*2, 92, 2);
-        y += 18;
-      }
+    // big Chinese title needs a CJK-friendly fallback
+    ctx.font = "800 112px system-ui, -apple-system, Segoe UI, Roboto, 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif";
+    y = drawWrappedText(ctx, title, textX, y, textMaxW, 128, 2);
 
-      const artistLine = state.artist || "Unknown artist";
-      if (showArtist) {
-        ctx.font = "600 52px system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
-        ctx.fillStyle = "rgba(255,255,255,.78)";
-        y = drawWrappedText(ctx, artistLine, pad, y, W - pad*2, 62, 2);
-        y += 12;
-      }
+    // spacing between title and artist
+    y += 20;
+  }
 
-      if (showYear) {
-        ctx.font = "600 44px system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
-        ctx.fillStyle = "rgba(255,255,255,.62)";
-        ctx.fillText(state.year || "—", pad, y);
-      }
+  if (showArtist) {
+    ctx.fillStyle = "rgba(255,255,255,0.72)";
+    ctx.font = "650 52px system-ui, -apple-system, Segoe UI, Roboto, 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif";
+    drawWrappedText(ctx, artist, textX, y, textMaxW, 64, 1);
+  }
 
-      // tiny footer
-      ctx.fillStyle = "rgba(255,255,255,.40)";
-      ctx.font = "500 30px system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
-      ctx.fillText("Generated via Spotify oEmbed", pad, H - 78);
-    }
+  // small footer (optional)
+  ctx.fillStyle = "rgba(255,255,255,0.22)";
+  ctx.font = "500 28px system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
+  ctx.fillText("Generated via Spotify oEmbed", padX, H - 70);
+}
+
+// soft glow helper
+function drawRadialGlow(ctx, cx, cy, r, color, alpha) {
+  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+  g.addColorStop(0, hexToRgba(color, alpha));
+  g.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+}
+
+function hexToRgba(hex, a) {
+  const h = hex.replace("#", "");
+  const r = parseInt(h.slice(0,2), 16);
+  const g = parseInt(h.slice(2,4), 16);
+  const b = parseInt(h.slice(4,6), 16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
 
     function downloadPng() {
       const canvas = document.getElementById("card");
